@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinModel Builder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <header class="hero">
+        <h1>FinModel Builder</h1>
+        <p>Конструктор финансовой модели для бизнеса и субсидий</p>
+      </header>
+
+      <form id="finmodel-form" class="form">
+        <div class="form-grid">
+          <label class="field">
+            <span>Название проекта</span>
+            <input type="text" name="projectName" placeholder="Например, Кофейня на районе" required>
+          </label>
+
+          <label class="field">
+            <span>Тип бизнеса</span>
+            <input type="text" name="businessType" placeholder="Например, общепит" required>
+          </label>
+
+          <label class="field">
+            <span>Инвестиции, ₽</span>
+            <input type="number" name="investments" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>Средняя выручка в месяц, ₽</span>
+            <input type="number" name="monthlyRevenue" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>Постоянные расходы в месяц, ₽</span>
+            <input type="number" name="fixedCosts" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>Переменные расходы в месяц, ₽</span>
+            <input type="number" name="variableCosts" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>ФОТ в месяц, ₽</span>
+            <input type="number" name="payroll" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>Налоги в месяц, ₽</span>
+            <input type="number" name="taxes" min="0" step="1000" placeholder="0" required>
+          </label>
+
+          <label class="field">
+            <span>Горизонт планирования, месяцев</span>
+            <input type="number" name="horizon" min="1" step="1" value="12" required>
+          </label>
+        </div>
+
+        <button type="submit" class="btn">Рассчитать</button>
+      </form>
+    </section>
+
+    <section class="card result-card">
+      <h2>Результат</h2>
+      <div id="result" class="result-content">
+        Заполните форму и нажмите «Рассчитать», чтобы увидеть результат.
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
