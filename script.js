@@ -9,15 +9,20 @@ function parseNumber(value) {
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("ru-RU", {
+    useGrouping: true,
     maximumFractionDigits: 0,
   }).format(value);
 }
 
 function formatMonths(value) {
-  return new Intl.NumberFormat("ru-RU", {
+  if (value < 1) {
+    return "менее 1 месяца";
+  }
+
+  return `${new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
-  }).format(value);
+  }).format(value)} мес.`;
 }
 
 function getStatus(profit) {
@@ -109,8 +114,7 @@ function calculateModel(values) {
     monthlyProfit,
     totalProfit,
     paybackMonths,
-    paybackPeriod:
-      paybackMonths !== null ? `${formatMonths(paybackMonths)} мес.` : "не окупается",
+    paybackPeriod: paybackMonths !== null ? formatMonths(paybackMonths) : "не окупается",
     status: getStatus(monthlyProfit),
     warnings: getWarnings(monthlyProfit, values.payroll, paybackMonths, values.horizon),
   };
@@ -176,16 +180,19 @@ function renderScenarios(baseValues) {
     {
       key: "base",
       title: "Базовый",
+      description: "Исходные данные пользователя без изменений",
       values: buildScenarioValues(baseValues, "base"),
     },
     {
       key: "optimistic",
       title: "Оптимистичный",
+      description: "Выручка +20%, расходы без изменений",
       values: buildScenarioValues(baseValues, "optimistic"),
     },
     {
       key: "pessimistic",
       title: "Пессимистичный",
+      description: "Выручка -20%, постоянные и переменные расходы +10%",
       values: buildScenarioValues(baseValues, "pessimistic"),
     },
   ];
@@ -199,6 +206,7 @@ function renderScenarios(baseValues) {
           return `
             <article class="scenario-card scenario-card--${scenario.key}">
               <h3>${scenario.title}</h3>
+              <p class="scenario-description">${scenario.description}</p>
               <div class="scenario-metrics">
                 <div class="scenario-row">
                   <span>Прибыль в месяц</span>
