@@ -1,5 +1,6 @@
 const form = document.getElementById("finmodel-form");
 const resultEl = document.getElementById("result");
+const scenariosEl = document.getElementById("scenarios");
 const STORAGE_KEY = "finmodel-form-data";
 
 function parseNumber(value) {
@@ -80,35 +81,68 @@ function loadFormData() {
   }
 }
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  saveFormData();
-
+function getFormValues() {
   const formData = new FormData(form);
-  const investments = parseNumber(formData.get("investments"));
-  const monthlyRevenue = parseNumber(formData.get("monthlyRevenue"));
-  const fixedCosts = parseNumber(formData.get("fixedCosts"));
-  const variableCosts = parseNumber(formData.get("variableCosts"));
-  const payroll = parseNumber(formData.get("payroll"));
-  const taxes = parseNumber(formData.get("taxes"));
-  const horizon = parseNumber(formData.get("horizon")) || 12;
 
+  return {
+    investments: parseNumber(formData.get("investments")),
+    monthlyRevenue: parseNumber(formData.get("monthlyRevenue")),
+    fixedCosts: parseNumber(formData.get("fixedCosts")),
+    variableCosts: parseNumber(formData.get("variableCosts")),
+    payroll: parseNumber(formData.get("payroll")),
+    taxes: parseNumber(formData.get("taxes")),
+    horizon: parseNumber(formData.get("horizon")) || 12,
+  };
+}
+
+function calculateModel(values) {
   const monthlyProfit =
-    monthlyRevenue - fixedCosts - variableCosts - payroll - taxes;
-  const totalProfit = monthlyProfit * horizon;
-  const paybackMonths = monthlyProfit > 0 ? investments / monthlyProfit : null;
-  const paybackPeriod =
-    paybackMonths !== null ? `${formatMonths(paybackMonths)} мес.` : "не окупается";
-  const status = getStatus(monthlyProfit);
-  const warnings = getWarnings(monthlyProfit, payroll, paybackMonths, horizon);
+    values.monthlyRevenue -
+    values.fixedCosts -
+    values.variableCosts -
+    values.payroll -
+    values.taxes;
+  const totalProfit = monthlyProfit * values.horizon;
+  const paybackMonths = monthlyProfit > 0 ? values.investments / monthlyProfit : null;
 
-  const warningsMarkup = warnings.length
+  return {
+    monthlyProfit,
+    totalProfit,
+    paybackMonths,
+    paybackPeriod:
+      paybackMonths !== null ? `${formatMonths(paybackMonths)} мес.` : "не окупается",
+    status: getStatus(monthlyProfit),
+    warnings: getWarnings(monthlyProfit, values.payroll, paybackMonths, values.horizon),
+  };
+}
+
+function buildScenarioValues(baseValues, scenarioType) {
+  if (scenarioType === "optimistic") {
+    return {
+      ...baseValues,
+      monthlyRevenue: baseValues.monthlyRevenue * 1.2,
+    };
+  }
+
+  if (scenarioType === "pessimistic") {
+    return {
+      ...baseValues,
+      monthlyRevenue: baseValues.monthlyRevenue * 0.8,
+      fixedCosts: baseValues.fixedCosts * 1.1,
+      variableCosts: baseValues.variableCosts * 1.1,
+    };
+  }
+
+  return { ...baseValues };
+}
+
+function renderMainResult(metrics) {
+  const warningsMarkup = metrics.warnings.length
     ? `
       <div class="warnings-block">
         <h3 class="warnings-title">Предупреждения</h3>
         <ul class="warnings-list">
-          ${warnings.map((warning) => `<li>${warning}</li>`).join("")}
+          ${metrics.warnings.map((warning) => `<li>${warning}</li>`).join("")}
         </ul>
       </div>
     `
@@ -118,23 +152,85 @@ form.addEventListener("submit", (event) => {
     <div class="result-grid">
       <div class="result-row">
         <span>Прибыль в месяц</span>
-        <strong>${formatCurrency(monthlyProfit)} ₽</strong>
+        <strong>${formatCurrency(metrics.monthlyProfit)} ₽</strong>
       </div>
       <div class="result-row">
         <span>Суммарная прибыль</span>
-        <strong>${formatCurrency(totalProfit)} ₽</strong>
+        <strong>${formatCurrency(metrics.totalProfit)} ₽</strong>
       </div>
       <div class="result-row">
         <span>Срок окупаемости</span>
-        <strong>${paybackPeriod}</strong>
+        <strong>${metrics.paybackPeriod}</strong>
       </div>
       <div class="result-row result-status">
         <span>Статус модели</span>
-        <strong>${status}</strong>
+        <strong>${metrics.status}</strong>
       </div>
     </div>
     ${warningsMarkup}
   `;
+}
+
+function renderScenarios(baseValues) {
+  const scenarios = [
+    {
+      key: "base",
+      title: "Базовый",
+      values: buildScenarioValues(baseValues, "base"),
+    },
+    {
+      key: "optimistic",
+      title: "Оптимистичный",
+      values: buildScenarioValues(baseValues, "optimistic"),
+    },
+    {
+      key: "pessimistic",
+      title: "Пессимистичный",
+      values: buildScenarioValues(baseValues, "pessimistic"),
+    },
+  ];
+
+  scenariosEl.innerHTML = `
+    <div class="scenario-grid">
+      ${scenarios
+        .map((scenario) => {
+          const metrics = calculateModel(scenario.values);
+
+          return `
+            <article class="scenario-card scenario-card--${scenario.key}">
+              <h3>${scenario.title}</h3>
+              <div class="scenario-metrics">
+                <div class="scenario-row">
+                  <span>Прибыль в месяц</span>
+                  <strong>${formatCurrency(metrics.monthlyProfit)} ₽</strong>
+                </div>
+                <div class="scenario-row">
+                  <span>Срок окупаемости</span>
+                  <strong>${metrics.paybackPeriod}</strong>
+                </div>
+                <div class="scenario-row">
+                  <span>Статус модели</span>
+                  <strong>${metrics.status}</strong>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  saveFormData();
+
+  const values = getFormValues();
+  const metrics = calculateModel(values);
+
+  renderMainResult(metrics);
+  renderScenarios(values);
 });
 
 loadFormData();
