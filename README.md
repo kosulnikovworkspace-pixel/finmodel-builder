@@ -44,4 +44,4 @@ https://kosulnikovworkspace-pixel.github.io/finmodel-builder/
 
 ## Автор
 
-Дарий
+Kosulnikov D. (junior vibe coder)
