@@ -62,7 +62,10 @@
           </label>
         </div>
 
-        <button type="submit" class="btn">Рассчитать</button>
+        <div class="form-actions">
+          <button type="submit" class="btn">Рассчитать</button>
+          <button type="button" id="download-pdf" class="btn btn-secondary">Скачать PDF</button>
+        </div>
       </form>
     </section>
 
@@ -88,6 +91,7 @@
     </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

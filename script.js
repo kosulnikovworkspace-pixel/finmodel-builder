@@ -2,6 +2,7 @@ const form = document.getElementById("finmodel-form");
 const resultEl = document.getElementById("result");
 const scenariosEl = document.getElementById("scenarios");
 const scenarioChartEl = document.getElementById("scenario-chart");
+const downloadPdfBtn = document.getElementById("download-pdf");
 const STORAGE_KEY = "finmodel-form-data";
 const MONEY_FIELD_NAMES = [
   "investments",
@@ -35,6 +36,25 @@ function formatCurrency(value) {
     useGrouping: true,
     maximumFractionDigits: 0,
   }).format(value).replace(/\s/g, " ");
+}
+
+function formatReportDate(date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function formatMonths(value) {
@@ -128,6 +148,15 @@ function getFormValues() {
     payroll: parseMoney(formData.get("payroll")),
     taxes: parseMoney(formData.get("taxes")),
     horizon: parseNumber(formData.get("horizon")) || 12,
+  };
+}
+
+function getProjectInfo() {
+  const formData = new FormData(form);
+
+  return {
+    projectName: String(formData.get("projectName") || "").trim(),
+    businessType: String(formData.get("businessType") || "").trim(),
   };
 }
 
@@ -297,6 +326,151 @@ function renderScenarioChart(scenarios) {
   `;
 }
 
+function buildReportData(values, metrics, scenarios) {
+  return {
+    createdAt: formatReportDate(new Date()),
+    project: getProjectInfo(),
+    values,
+    metrics,
+    scenarios,
+  };
+}
+
+function renderReportRows(rows) {
+  return rows
+    .map(
+      ([label, value]) => `
+        <div class="pdf-row">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderPdfReport(reportData) {
+  const { project, values, metrics, scenarios } = reportData;
+  const warningsMarkup = metrics.warnings.length
+    ? `
+      <section class="pdf-section pdf-warning">
+        <h2>Предупреждения</h2>
+        <ul>
+          ${metrics.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}
+        </ul>
+      </section>
+    `
+    : "";
+
+  return `
+    <article class="pdf-report">
+      <header class="pdf-header">
+        <h1>FinModel Builder</h1>
+        <p>PDF-отчет финансовой модели</p>
+        <span>Дата создания: ${escapeHtml(reportData.createdAt)}</span>
+      </header>
+
+      <section class="pdf-section">
+        <h2>Данные проекта</h2>
+        <div class="pdf-grid">
+          ${renderReportRows([
+            ["Название проекта", project.projectName || "—"],
+            ["Тип бизнеса", project.businessType || "—"],
+            ["Инвестиции", `${formatCurrency(values.investments)} ₽`],
+            ["Средняя выручка в месяц", `${formatCurrency(values.monthlyRevenue)} ₽`],
+            ["Постоянные расходы в месяц", `${formatCurrency(values.fixedCosts)} ₽`],
+            ["Переменные расходы в месяц", `${formatCurrency(values.variableCosts)} ₽`],
+            ["ФОТ", `${formatCurrency(values.payroll)} ₽`],
+            ["Налоги", `${formatCurrency(values.taxes)} ₽`],
+            ["Горизонт планирования", `${values.horizon} мес.`],
+          ])}
+        </div>
+      </section>
+
+      <section class="pdf-section">
+        <h2>Результаты</h2>
+        <div class="pdf-grid">
+          ${renderReportRows([
+            ["Прибыль в месяц", `${formatCurrency(metrics.monthlyProfit)} ₽`],
+            ["Суммарная прибыль", `${formatCurrency(metrics.totalProfit)} ₽`],
+            ["Срок окупаемости", metrics.paybackPeriod],
+            ["Статус модели", metrics.status],
+          ])}
+        </div>
+      </section>
+
+      ${warningsMarkup}
+
+      <section class="pdf-section">
+        <h2>Сценарии модели</h2>
+        <div class="pdf-scenarios">
+          ${scenarios
+            .map(
+              (scenario) => `
+                <div class="pdf-scenario">
+                  <h3>${escapeHtml(scenario.title)}</h3>
+                  ${renderReportRows([
+                    ["Прибыль в месяц", `${formatCurrency(scenario.metrics.monthlyProfit)} ₽`],
+                    ["Срок окупаемости", scenario.metrics.paybackPeriod],
+                    ["Статус", scenario.metrics.status],
+                  ])}
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    </article>
+  `;
+}
+
+function calculateAndRenderModel() {
+  saveFormData();
+
+  const values = getFormValues();
+  const metrics = calculateModel(values);
+  const scenarios = buildScenarios(values);
+
+  renderMainResult(metrics);
+  renderScenarios(scenarios);
+  renderScenarioChart(scenarios);
+
+  return buildReportData(values, metrics, scenarios);
+}
+
+function downloadPdfReport(reportData) {
+  if (typeof html2pdf === "undefined") {
+    alert("Не удалось загрузить библиотеку для PDF. Проверьте подключение к интернету и попробуйте снова.");
+    return;
+  }
+
+  const reportWrapper = document.createElement("div");
+  reportWrapper.className = "pdf-render-host";
+  reportWrapper.innerHTML = renderPdfReport(reportData);
+  document.body.appendChild(reportWrapper);
+
+  const options = {
+    margin: 10,
+    filename: "finmodel-report.pdf",
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+  };
+
+  html2pdf()
+    .set(options)
+    .from(reportWrapper.firstElementChild)
+    .save()
+    .then(() => {
+      reportWrapper.remove();
+    })
+    .catch(() => {
+      reportWrapper.remove();
+      alert("Не удалось сформировать PDF. Попробуйте еще раз.");
+    });
+}
+
 function formatMoneyField(field) {
   const selectionStart = field.selectionStart ?? field.value.length;
   const digitsBeforeCursor = cleanMoneyValue(field.value.slice(0, selectionStart)).length;
@@ -341,15 +515,16 @@ function setupMoneyFields() {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  saveFormData();
+  calculateAndRenderModel();
+});
 
-  const values = getFormValues();
-  const metrics = calculateModel(values);
-  const scenarios = buildScenarios(values);
+downloadPdfBtn.addEventListener("click", () => {
+  if (!form.reportValidity()) {
+    return;
+  }
 
-  renderMainResult(metrics);
-  renderScenarios(scenarios);
-  renderScenarioChart(scenarios);
+  const reportData = calculateAndRenderModel();
+  downloadPdfReport(reportData);
 });
 
 setupMoneyFields();
