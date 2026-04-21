@@ -131,25 +131,42 @@ body {
 }
 
 .pdf-render-host {
-  position: absolute;
+  position: fixed;
   top: 0;
-  left: -10000px;
-  width: 794px;
+  left: -9999px;
+  width: 190mm;
+  max-width: 190mm;
+  overflow: visible;
   background: #ffffff;
 }
 
 .pdf-report {
-  width: 760px;
-  padding: 34px;
+  width: 190mm;
+  max-width: 190mm;
+  min-width: 0;
+  overflow: visible;
+  padding: 8mm;
   color: #1f2a37;
   background: #ffffff;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.pdf-export-mode,
+.pdf-export-mode * {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.pdf-export-mode .pdf-report {
+  width: 190mm;
+  max-width: 190mm;
+}
+
 .pdf-header {
-  padding-bottom: 18px;
+  padding-bottom: 12px;
   border-bottom: 2px solid #006d77;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .pdf-header h1 {
@@ -170,7 +187,8 @@ body {
 
 .pdf-section {
   break-inside: avoid;
-  margin-top: 18px;
+  page-break-inside: avoid;
+  margin-top: 12px;
 }
 
 .pdf-section h2 {
@@ -182,14 +200,15 @@ body {
 .pdf-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pdf-row {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
-  padding: 9px 10px;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 8px;
   border: 1px solid #e3ebf3;
   border-radius: 8px;
   background: #fbfdff;
@@ -202,10 +221,11 @@ body {
 .pdf-row strong {
   color: #1f2a37;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .pdf-warning {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid #f1c9a7;
   border-radius: 10px;
   background: #fff8f2;
@@ -219,12 +239,13 @@ body {
 
 .pdf-scenarios {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .pdf-scenario {
-  padding: 12px;
+  min-width: 0;
+  padding: 10px;
   border: 1px solid #d9e5f0;
   border-radius: 10px;
   background: #fbfdff;
@@ -253,6 +274,52 @@ body {
 
 .pdf-scenario .pdf-row strong {
   text-align: left;
+}
+
+.pdf-chart {
+  display: grid;
+  gap: 7px;
+}
+
+.pdf-chart-row {
+  display: grid;
+  grid-template-columns: 28mm minmax(0, 1fr) 28mm;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pdf-chart-row span,
+.pdf-chart-row strong {
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.pdf-chart-row strong {
+  text-align: right;
+}
+
+.pdf-chart-track {
+  min-width: 0;
+  height: 8px;
+  border-radius: 999px;
+  background: #e7eef5;
+}
+
+.pdf-chart-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+}
+
+.pdf-chart-fill--positive {
+  background: #006d77;
+}
+
+.pdf-chart-fill--negative {
+  background: #d97706;
 }
 
 .result-card h2 {

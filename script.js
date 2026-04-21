@@ -351,6 +351,8 @@ function renderReportRows(rows) {
 
 function renderPdfReport(reportData) {
   const { project, values, metrics, scenarios } = reportData;
+  const scenarioProfits = scenarios.map((scenario) => scenario.metrics.monthlyProfit);
+  const maxScenarioProfit = Math.max(...scenarioProfits.map((profit) => Math.abs(profit)), 1);
   const warningsMarkup = metrics.warnings.length
     ? `
       <section class="pdf-section pdf-warning">
@@ -420,6 +422,29 @@ function renderPdfReport(reportData) {
             .join("")}
         </div>
       </section>
+
+      <section class="pdf-section">
+        <h2>Сравнение сценариев</h2>
+        <div class="pdf-chart">
+          ${scenarios
+            .map((scenario) => {
+              const profit = scenario.metrics.monthlyProfit;
+              const barWidth = Math.abs(profit / maxScenarioProfit) * 100;
+              const signClass = profit < 0 ? "pdf-chart-fill--negative" : "pdf-chart-fill--positive";
+
+              return `
+                <div class="pdf-chart-row">
+                  <span>${escapeHtml(scenario.title)}</span>
+                  <div class="pdf-chart-track">
+                    <i class="pdf-chart-fill ${signClass}" style="width: ${barWidth}%;"></i>
+                  </div>
+                  <strong>${formatCurrency(profit)} ₽</strong>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
     </article>
   `;
 }
@@ -445,7 +470,7 @@ function downloadPdfReport(reportData) {
   }
 
   const reportWrapper = document.createElement("div");
-  reportWrapper.className = "pdf-render-host";
+  reportWrapper.className = "pdf-render-host pdf-export-mode";
   reportWrapper.innerHTML = renderPdfReport(reportData);
   document.body.appendChild(reportWrapper);
 
@@ -458,15 +483,20 @@ function downloadPdfReport(reportData) {
     pagebreak: { mode: ["avoid-all", "css", "legacy"] },
   };
 
+  const cleanupPdfExport = () => {
+    reportWrapper.classList.remove("pdf-export-mode");
+    reportWrapper.remove();
+  };
+
   html2pdf()
     .set(options)
     .from(reportWrapper.firstElementChild)
     .save()
     .then(() => {
-      reportWrapper.remove();
+      cleanupPdfExport();
     })
     .catch(() => {
-      reportWrapper.remove();
+      cleanupPdfExport();
       alert("Не удалось сформировать PDF. Попробуйте еще раз.");
     });
 }
