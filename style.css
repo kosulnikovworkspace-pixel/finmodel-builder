@@ -120,6 +120,11 @@ body {
   font-size: 1.3rem;
 }
 
+.chart-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.3rem;
+}
+
 .result-content {
   border: 1px dashed #b8c7d8;
   border-radius: 12px;
@@ -193,6 +198,75 @@ body {
   background: #fbfdff;
   min-height: 84px;
   line-height: 1.5;
+}
+
+.chart-content {
+  border: 1px dashed #b8c7d8;
+  border-radius: 12px;
+  padding: 14px;
+  color: #324355;
+  background: #fbfdff;
+  min-height: 84px;
+  line-height: 1.5;
+}
+
+.chart-bars {
+  display: grid;
+  gap: 14px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: minmax(116px, 0.85fr) minmax(180px, 2fr) minmax(112px, 0.8fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chart-track {
+  position: relative;
+  min-height: 34px;
+  overflow: hidden;
+  border: 1px solid #e3ebf3;
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, transparent calc(var(--zero-position) - 1px), #8ba2b8 calc(var(--zero-position) - 1px), #8ba2b8 calc(var(--zero-position) + 1px), transparent calc(var(--zero-position) + 1px)),
+    #ffffff;
+}
+
+.chart-bar-fill {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  min-width: 4px;
+  border-radius: 8px;
+  box-shadow: 0 6px 14px rgba(31, 42, 55, 0.12);
+}
+
+.chart-bar-fill--positive {
+  background: linear-gradient(90deg, #006d77 0%, #27a6a5 100%);
+}
+
+.chart-bar-fill--negative {
+  background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%);
+}
+
+.chart-bar-fill--optimistic.chart-bar-fill--positive {
+  background: linear-gradient(90deg, #16834a 0%, #35b96b 100%);
+}
+
+.chart-bar-fill--pessimistic.chart-bar-fill--positive {
+  background: linear-gradient(90deg, #64748b 0%, #94a3b8 100%);
+}
+
+.chart-value {
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
 }
 
 .scenario-grid {
@@ -289,6 +363,19 @@ body {
   }
 
   .scenario-row strong {
+    text-align: left;
+  }
+
+  .chart-row {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .chart-track {
+    min-height: 32px;
+  }
+
+  .chart-value {
     text-align: left;
   }
 }

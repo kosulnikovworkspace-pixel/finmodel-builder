@@ -1,6 +1,7 @@
 const form = document.getElementById("finmodel-form");
 const resultEl = document.getElementById("result");
 const scenariosEl = document.getElementById("scenarios");
+const scenarioChartEl = document.getElementById("scenario-chart");
 const STORAGE_KEY = "finmodel-form-data";
 const MONEY_FIELD_NAMES = [
   "investments",
@@ -33,7 +34,7 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("ru-RU", {
     useGrouping: true,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(value).replace(/\s/g, " ");
 }
 
 function formatMonths(value) {
@@ -170,6 +171,32 @@ function buildScenarioValues(baseValues, scenarioType) {
   return { ...baseValues };
 }
 
+function buildScenarios(baseValues) {
+  return [
+    {
+      key: "base",
+      title: "Базовый",
+      description: "Исходные данные пользователя без изменений",
+      values: buildScenarioValues(baseValues, "base"),
+    },
+    {
+      key: "optimistic",
+      title: "Оптимистичный",
+      description: "Выручка +20%, расходы без изменений",
+      values: buildScenarioValues(baseValues, "optimistic"),
+    },
+    {
+      key: "pessimistic",
+      title: "Пессимистичный",
+      description: "Выручка -20%, постоянные и переменные расходы +10%",
+      values: buildScenarioValues(baseValues, "pessimistic"),
+    },
+  ].map((scenario) => ({
+    ...scenario,
+    metrics: calculateModel(scenario.values),
+  }));
+}
+
 function renderMainResult(metrics) {
   const warningsMarkup = metrics.warnings.length
     ? `
@@ -205,34 +232,11 @@ function renderMainResult(metrics) {
   `;
 }
 
-function renderScenarios(baseValues) {
-  const scenarios = [
-    {
-      key: "base",
-      title: "Базовый",
-      description: "Исходные данные пользователя без изменений",
-      values: buildScenarioValues(baseValues, "base"),
-    },
-    {
-      key: "optimistic",
-      title: "Оптимистичный",
-      description: "Выручка +20%, расходы без изменений",
-      values: buildScenarioValues(baseValues, "optimistic"),
-    },
-    {
-      key: "pessimistic",
-      title: "Пессимистичный",
-      description: "Выручка -20%, постоянные и переменные расходы +10%",
-      values: buildScenarioValues(baseValues, "pessimistic"),
-    },
-  ];
-
+function renderScenarios(scenarios) {
   scenariosEl.innerHTML = `
     <div class="scenario-grid">
       ${scenarios
         .map((scenario) => {
-          const metrics = calculateModel(scenario.values);
-
           return `
             <article class="scenario-card scenario-card--${scenario.key}">
               <h3>${scenario.title}</h3>
@@ -240,18 +244,52 @@ function renderScenarios(baseValues) {
               <div class="scenario-metrics">
                 <div class="scenario-row">
                   <span>Прибыль в месяц</span>
-                  <strong>${formatCurrency(metrics.monthlyProfit)} ₽</strong>
+                  <strong>${formatCurrency(scenario.metrics.monthlyProfit)} ₽</strong>
                 </div>
                 <div class="scenario-row">
                   <span>Срок окупаемости</span>
-                  <strong>${metrics.paybackPeriod}</strong>
+                  <strong>${scenario.metrics.paybackPeriod}</strong>
                 </div>
                 <div class="scenario-row">
                   <span>Статус модели</span>
-                  <strong>${metrics.status}</strong>
+                  <strong>${scenario.metrics.status}</strong>
                 </div>
               </div>
             </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderScenarioChart(scenarios) {
+  const profits = scenarios.map((scenario) => scenario.metrics.monthlyProfit);
+  const minProfit = Math.min(0, ...profits);
+  const maxProfit = Math.max(0, ...profits);
+  const range = maxProfit - minProfit || 1;
+  const zeroPosition = Math.abs(minProfit / range) * 100;
+
+  scenarioChartEl.innerHTML = `
+    <div class="chart-bars" style="--zero-position: ${zeroPosition}%;">
+      ${scenarios
+        .map((scenario) => {
+          const profit = scenario.metrics.monthlyProfit;
+          const barWidth = Math.abs(profit / range) * 100;
+          const barStart = profit < 0 ? zeroPosition - barWidth : zeroPosition;
+          const signClass = profit < 0 ? "chart-bar-fill--negative" : "chart-bar-fill--positive";
+
+          return `
+            <div class="chart-row">
+              <div class="chart-label">${scenario.title}</div>
+              <div class="chart-track">
+                <span
+                  class="chart-bar-fill ${signClass} chart-bar-fill--${scenario.key}"
+                  style="left: ${barStart}%; width: ${barWidth}%; min-width: ${profit === 0 ? 0 : 4}px;"
+                ></span>
+              </div>
+              <div class="chart-value">${formatCurrency(profit)} ₽</div>
+            </div>
           `;
         })
         .join("")}
@@ -307,9 +345,11 @@ form.addEventListener("submit", (event) => {
 
   const values = getFormValues();
   const metrics = calculateModel(values);
+  const scenarios = buildScenarios(values);
 
   renderMainResult(metrics);
-  renderScenarios(values);
+  renderScenarios(scenarios);
+  renderScenarioChart(scenarios);
 });
 
 setupMoneyFields();
