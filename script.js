@@ -2,9 +2,31 @@ const form = document.getElementById("finmodel-form");
 const resultEl = document.getElementById("result");
 const scenariosEl = document.getElementById("scenarios");
 const STORAGE_KEY = "finmodel-form-data";
+const MONEY_FIELD_NAMES = [
+  "investments",
+  "monthlyRevenue",
+  "fixedCosts",
+  "variableCosts",
+  "payroll",
+  "taxes",
+];
 
 function parseNumber(value) {
   return Number(value) || 0;
+}
+
+function cleanMoneyValue(value) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+
+function parseMoney(value) {
+  return Number(cleanMoneyValue(value)) || 0;
+}
+
+function formatMoneyInput(value) {
+  const cleanValue = cleanMoneyValue(value);
+
+  return cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 function formatCurrency(value) {
@@ -17,6 +39,10 @@ function formatCurrency(value) {
 function formatMonths(value) {
   if (value < 1) {
     return "менее 1 месяца";
+  }
+
+  if (Math.abs(value - Math.round(value)) < 0.0000001) {
+    return `${Math.round(value)} мес.`;
   }
 
   return `${new Intl.NumberFormat("ru-RU", {
@@ -61,6 +87,10 @@ function saveFormData() {
   const formData = new FormData(form);
   const values = Object.fromEntries(formData.entries());
 
+  MONEY_FIELD_NAMES.forEach((name) => {
+    values[name] = cleanMoneyValue(values[name]);
+  });
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
 }
 
@@ -78,7 +108,7 @@ function loadFormData() {
       const field = form.elements.namedItem(name);
 
       if (field && "value" in field) {
-        field.value = value;
+        field.value = MONEY_FIELD_NAMES.includes(name) ? formatMoneyInput(value) : value;
       }
     });
   } catch (error) {
@@ -90,12 +120,12 @@ function getFormValues() {
   const formData = new FormData(form);
 
   return {
-    investments: parseNumber(formData.get("investments")),
-    monthlyRevenue: parseNumber(formData.get("monthlyRevenue")),
-    fixedCosts: parseNumber(formData.get("fixedCosts")),
-    variableCosts: parseNumber(formData.get("variableCosts")),
-    payroll: parseNumber(formData.get("payroll")),
-    taxes: parseNumber(formData.get("taxes")),
+    investments: parseMoney(formData.get("investments")),
+    monthlyRevenue: parseMoney(formData.get("monthlyRevenue")),
+    fixedCosts: parseMoney(formData.get("fixedCosts")),
+    variableCosts: parseMoney(formData.get("variableCosts")),
+    payroll: parseMoney(formData.get("payroll")),
+    taxes: parseMoney(formData.get("taxes")),
     horizon: parseNumber(formData.get("horizon")) || 12,
   };
 }
@@ -229,6 +259,47 @@ function renderScenarios(baseValues) {
   `;
 }
 
+function formatMoneyField(field) {
+  const selectionStart = field.selectionStart ?? field.value.length;
+  const digitsBeforeCursor = cleanMoneyValue(field.value.slice(0, selectionStart)).length;
+  field.value = formatMoneyInput(field.value);
+
+  if (digitsBeforeCursor === 0) {
+    field.setSelectionRange(0, 0);
+    return;
+  }
+
+  let cursorPosition = field.value.length;
+  let digitsSeen = 0;
+
+  for (let index = 0; index < field.value.length; index += 1) {
+    if (/\d/.test(field.value[index])) {
+      digitsSeen += 1;
+    }
+
+    if (digitsSeen >= digitsBeforeCursor) {
+      cursorPosition = index + 1;
+      break;
+    }
+  }
+
+  field.setSelectionRange(cursorPosition, cursorPosition);
+}
+
+function setupMoneyFields() {
+  MONEY_FIELD_NAMES.forEach((name) => {
+    const field = form.elements.namedItem(name);
+
+    if (!field || !("value" in field)) {
+      return;
+    }
+
+    field.addEventListener("input", () => {
+      formatMoneyField(field);
+    });
+  });
+}
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -241,4 +312,5 @@ form.addEventListener("submit", (event) => {
   renderScenarios(values);
 });
 
+setupMoneyFields();
 loadFormData();
